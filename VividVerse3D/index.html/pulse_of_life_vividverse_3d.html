@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pulse of Life: VividVerse 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+            background-color: #090d16;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="text-slate-100 antialiased h-screen w-screen relative">
+
+    <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+    <div id="ui-overlay" class="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-4 md:p-6 hidden">
+        
+        <!-- Top Bar: HUD & Mini Map -->
+        <div class="flex justify-between items-start w-full">
+            <!-- Stats HUD -->
+            <div class="glass-panel p-4 rounded-2xl pointer-events-auto flex flex-col gap-2 shadow-2xl max-w-xs sm:max-w-md w-full">
+                <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                    <div class="flex items-center gap-2">
+                        <div id="hud-avatar-icon" class="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-lg font-bold shadow-inner">👤</div>
+                        <div>
+                            <h2 id="hud-name" class="font-bold text-sm leading-tight text-slate-100">Explorer</h2>
+                            <p id="hud-title" class="text-xs text-indigo-400 font-medium">Novice Adventurer</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400">Funds</div>
+                        <div id="hud-money" class="text-base font-extrabold text-emerald-400">$150</div>
+                    </div>
+                </div>
+
+                <!-- Needs Bars -->
+                <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs pt-1">
+                    <div>
+                        <div class="flex justify-between text-slate-300 mb-0.5"><span>⚡ Energy</span><span id="val-energy">100%</span></div>
+                        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div id="bar-energy" class="bg-amber-400 h-full transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-slate-300 mb-0.5"><span>🍕 Hunger</span><span id="val-hunger">100%</span></div>
+                        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div id="bar-hunger" class="bg-orange-500 h-full transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-slate-300 mb-0.5"><span>😄 Mood</span><span id="val-happiness">100%</span></div>
+                        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div id="bar-happiness" class="bg-pink-500 h-full transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-slate-300 mb-0.5"><span>💬 Social</span><span id="val-social">100%</span></div>
+                        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div id="bar-social" class="bg-sky-400 h-full transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time & Mini-Map Display -->
+            <div class="flex flex-col items-end gap-2 pointer-events-auto">
+                <div class="glass-panel px-4 py-2 rounded-xl flex items-center gap-3 text-xs font-semibold shadow-xl">
+                    <span id="time-icon">☀️</span>
+                    <span id="time-text" class="text-slate-200">12:00 PM</span>
+                    <span id="time-day" class="text-indigo-400">Day 1</span>
+                    <button id="btn-audio-toggle" class="ml-2 hover:text-indigo-300 text-slate-400"><i class="fas fa-volume-up"></i></button>
+                </div>
+
+                <!-- Mini Location Badge -->
+                <div class="glass-panel px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300 flex items-center gap-2">
+                    <i class="fas fa-location-dot text-indigo-400"></i>
+                    <span id="current-location-tag">City Plaza</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Prompt Indicator -->
+        <div id="action-prompt" class="self-center glass-panel px-6 py-3 rounded-full text-sm font-semibold text-white shadow-2xl transition-all duration-300 opacity-0 transform translate-y-4 pointer-events-none flex items-center gap-3 border border-indigo-500/40">
+            <span class="bg-indigo-600 px-2.5 py-1 rounded-md text-xs font-extrabold uppercase">E</span>
+            <span id="prompt-text">Interact with Café</span>
+        </div>
+
+        <!-- Bottom Action Bar / Navigation Tabs -->
+        <div class="flex justify-between items-end w-full">
+            <!-- Quick Actions -->
+            <div class="glass-panel p-2 rounded-2xl pointer-events-auto flex items-center gap-2">
+                <button onclick="openModal('modal-career')" class="p-3 hover:bg-slate-700/60 rounded-xl transition flex flex-col items-center text-xs gap-1 font-semibold text-slate-200 hover:text-indigo-400">
+                    <i class="fas fa-briefcase text-lg text-indigo-400"></i>
+                    <span>Career</span>
+                </button>
+                <button onclick="openModal('modal-relationships')" class="p-3 hover:bg-slate-700/60 rounded-xl transition flex flex-col items-center text-xs gap-1 font-semibold text-slate-200 hover:text-pink-400">
+                    <i class="fas fa-heart text-lg text-pink-400"></i>
+                    <span>Friends</span>
+                </button>
+                <button onclick="openModal('modal-inventory')" class="p-3 hover:bg-slate-700/60 rounded-xl transition flex flex-col items-center text-xs gap-1 font-semibold text-slate-200 hover:text-amber-400">
+                    <i class="fas fa-bag-shopping text-lg text-amber-400"></i>
+                    <span>Backpack</span>
+                </button>
+                <button onclick="openModal('modal-skills')" class="p-3 hover:bg-slate-700/60 rounded-xl transition flex flex-col items-center text-xs gap-1 font-semibold text-slate-200 hover:text-emerald-400">
+                    <i class="fas fa-star text-lg text-emerald-400"></i>
+                    <span>Skills</span>
+                </button>
+            </div>
+
+            <!-- Onscreen Controls for Mobile/Touch -->
+            <div id="mobile-controls" class="pointer-events-auto md:hidden flex gap-3">
+                <div class="grid grid-cols-3 gap-1 w-32 h-32 glass-panel p-2 rounded-2xl">
+                    <div></div>
+                    <button id="btn-up" class="bg-slate-700/60 active:bg-indigo-600 rounded-lg flex items-center justify-center text-white"><i class="fas fa-chevron-up"></i></button>
+                    <div></div>
+                    <button id="btn-left" class="bg-slate-700/60 active:bg-indigo-600 rounded-lg flex items-center justify-center text-white"><i class="fas fa-chevron-left"></i></button>
+                    <button id="btn-down" class="bg-slate-700/60 active:bg-indigo-600 rounded-lg flex items-center justify-center text-white"><i class="fas fa-chevron-down"></i></button>
+                    <button id="btn-right" class="bg-slate-700/60 active:bg-indigo-600 rounded-lg flex items-center justify-center text-white"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="character-creator" class="absolute inset-0 z-20 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="glass-panel p-6 md:p-8 rounded-3xl max-w-xl w-full shadow-2xl border border-slate-700/80 max-h-[90vh] overflow-y-auto">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Pulse of Life: VividVerse 3D</h1>
+                <p class="text-xs md:text-sm text-slate-400 mt-1">Design your persona and pave your path in a living world.</p>
+            </div>
+
+            <form id="creator-form" onsubmit="finishCharacterCreation(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Full Name</label>
+                    <input type="text" id="input-name" required value="Jordan Cruz" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <!-- Starting Archetype -->
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-400 mb-2">Life Archetype</label>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="archetype" value="Creative" checked class="peer hidden">
+                            <div class="glass-card p-3 rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-900/40 border border-transparent transition text-center">
+                                <div class="text-lg">🎨</div>
+                                <div class="font-bold text-slate-200">Creative Designer</div>
+                                <div class="text-[10px] text-slate-400">Bonus Arts Skill</div>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="archetype" value="Tech Enthusiast" class="peer hidden">
+                            <div class="glass-card p-3 rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-900/40 border border-transparent transition text-center">
+                                <div class="text-lg">💻</div>
+                                <div class="font-bold text-slate-200">Tech Innovator</div>
+                                <div class="text-[10px] text-slate-400">Bonus Tech Skill</div>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="archetype" value="Adventurer" class="peer hidden">
+                            <div class="glass-card p-3 rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-900/40 border border-transparent transition text-center">
+                                <div class="text-lg">🧗</div>
+                                <div class="font-bold text-slate-200">Hiker & Explorer</div>
+                                <div class="text-[10px] text-slate-400">Bonus Stamina</div>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="archetype" value="Entrepreneur" class="peer hidden">
+                            <div class="glass-card p-3 rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-900/40 border border-transparent transition text-center">
+                                <div class="text-lg">📈</div>
+                                <div class="font-bold text-slate-200">Business Mogul</div>
+                                <div class="text-[10px] text-slate-400">Bonus Cash</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Customization Sliders -->
+                <div class="grid grid-cols-2 gap-4 pt-2">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Skin Tone</label>
+                        <input type="color" id="input-skin" value="#e0ac69" class="w-full h-10 bg-transparent rounded-lg cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Hair Color</label>
+                        <input type="color" id="input-hair" value="#2c1b18" class="w-full h-10 bg-transparent rounded-lg cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Shirt Color</label>
+                        <input type="color" id="input-shirt" value="#4f46e5" class="w-full h-10 bg-transparent rounded-lg cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Pants Color</label>
+                        <input type="color" id="input-pants" value="#1e293b" class="w-full h-10 bg-transparent rounded-lg cursor-pointer">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold rounded-xl shadow-lg transition mt-4 text-sm">
+                    Step Into VividVerse 3D
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-npc" class="fixed inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm hidden pointer-events-auto">
+        <div class="glass-panel p-6 rounded-3xl max-w-md w-full border border-indigo-500/30 shadow-2xl relative">
+            <button onclick="closeModal('modal-npc')" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fas fa-xmark text-lg"></i></button>
+            
+            <div class="flex items-center gap-4 mb-4 border-b border-slate-700/60 pb-3">
+                <div id="npc-avatar-circle" class="w-12 h-12 rounded-full bg-pink-600 flex items-center justify-center text-xl font-bold">👤</div>
+                <div>
+                    <h3 id="npc-modal-name" class="font-extrabold text-slate-100 text-lg">Alex Mercer</h3>
+                    <p id="npc-modal-role" class="text-xs text-indigo-400">Coffee Enthusiast & Digital Designer</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span id="npc-relation-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-pink-300 border border-pink-500/30 font-semibold">Acquaintance</span>
+                        <span id="npc-relation-val" class="text-xs font-bold text-slate-300">Heart: 25%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NPC Speech Box -->
+            <div id="npc-dialogue-box" class="glass-card p-4 rounded-2xl text-xs text-slate-200 mb-4 min-h-[60px] italic border-l-4 border-indigo-500">
+                "Hey there! It's a wonderful day in the VividVerse. Looking for a hiking buddy or someone to talk design?"
+            </div>
+
+            <!-- Action Options -->
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <button onclick="interactNPC('chat')" class="p-2.5 glass-card hover:bg-indigo-600/30 rounded-xl font-semibold text-slate-200 transition text-left flex items-center gap-2">
+                    <span>💬</span> Chat & Connect
+                </button>
+                <button onclick="interactNPC('joke')" class="p-2.5 glass-card hover:bg-indigo-600/30 rounded-xl font-semibold text-slate-200 transition text-left flex items-center gap-2">
+                    <span>😄</span> Tell a Joke
+                </button>
+                <button onclick="interactNPC('hike')" class="p-2.5 glass-card hover:bg-emerald-600/30 rounded-xl font-semibold text-slate-200 transition text-left flex items-center gap-2">
+                    <span>🧗</span> Invite on Hike
+                </button>
+                <button onclick="interactNPC('gift')" class="p-2.5 glass-card hover:bg-amber-600/30 rounded-xl font-semibold text-slate-200 transition text-left flex items-center gap-2">
+                    <span>🎁</span> Give Gift
+                </button>
+                <button onclick="interactNPC('flirt')" class="p-2.5 glass-card hover:bg-pink-600/30 rounded-xl font-semibold text-pink-200 transition text-left flex items-center gap-2 col-span-2">
+                    <span>💖</span> Express Special Feelings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-career" class="fixed inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm hidden pointer-events-auto">
+        <div class="glass-panel p-6 rounded-3xl max-w-lg w-full border border-indigo-500/30 shadow-2xl relative max-h-[85vh] overflow-y-auto">
+            <button onclick="closeModal('modal-career')" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fas fa-xmark text-lg"></i></button>
+            
+            <h2 class="text-xl font-extrabold text-white mb-1 flex items-center gap-2"><i class="fas fa-briefcase text-indigo-400"></i> Career Dashboard</h2>
+            <p class="text-xs text-slate-400 mb-4">Choose a gig or career shift to earn money and build reputation.</p>
+
+            <div class="space-y-3">
+                <!-- Design Gig -->
+                <div class="glass-card p-4 rounded-2xl border border-slate-700/60 flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-sm text-slate-100">Visual Design Studio</div>
+                        <p class="text-xs text-slate-400">Create brand art & UI graphics.</p>
+                        <div class="text-[11px] text-indigo-400 mt-1 font-semibold">Reward: $60 • Energy: -15</div>
+                    </div>
+                    <button onclick="startJobMinigame('design')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition">Work Gig</button>
+                </div>
+
+                <!-- Cloud Tech Gig -->
+                <div class="glass-card p-4 rounded-2xl border border-slate-700/60 flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-sm text-slate-100">Cloud Tech Node Fix</div>
+                        <p class="text-xs text-slate-400">Configure cloud servers and fix glitches.</p>
+                        <div class="text-[11px] text-indigo-400 mt-1 font-semibold">Reward: $85 • Energy: -20</div>
+                    </div>
+                    <button onclick="startJobMinigame('tech')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition">Work Gig</button>
+                </div>
+
+                <!-- Content Creator Streaming -->
+                <div class="glass-card p-4 rounded-2xl border border-slate-700/60 flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-sm text-slate-100">Outdoor Vlog & Livestream</div>
+                        <p class="text-xs text-slate-400">Stream your adventures to fans.</p>
+                        <div class="text-[11px] text-pink-400 mt-1 font-semibold">Reward: $50-$120 • Energy: -25</div>
+                    </div>
+                    <button onclick="startJobMinigame('vlog')" class="px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-xl text-xs font-bold transition">Stream Vlog</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-minigame" class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md hidden pointer-events-auto">
+        <div class="glass-panel p-6 rounded-3xl max-w-md w-full border border-indigo-500/50 shadow-2xl text-center">
+            <h3 id="minigame-title" class="text-lg font-extrabold text-white mb-2">Design Palette Match</h3>
+            <p id="minigame-desc" class="text-xs text-slate-300 mb-4">Click the matching glowing color node before timer runs out!</p>
+
+            <div id="minigame-area" class="my-6 min-h-[160px] flex items-center justify-center flex-col gap-3">
+                <!-- Dynamic minigame elements rendered here -->
+            </div>
+
+            <div id="minigame-status" class="text-xs font-bold text-amber-400 mb-4">Time left: 10s</div>
+
+            <button id="minigame-cancel-btn" onclick="closeModal('modal-minigame')" class="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-xs font-bold text-white rounded-xl transition">Quit</button>
+        </div>
+    </div>
+
+    <div id="modal-relationships" class="fixed inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm hidden pointer-events-auto">
+        <div class="glass-panel p-6 rounded-3xl max-w-md w-full border border-pink-500/30 shadow-2xl relative max-h-[85vh] overflow-y-auto">
+            <button onclick="closeModal('modal-relationships')" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fas fa-xmark text-lg"></i></button>
+            <h2 class="text-xl font-extrabold text-white mb-1 flex items-center gap-2"><i class="fas fa-heart text-pink-400"></i> Social Network</h2>
+            <p class="text-xs text-slate-400 mb-4">Track your connections in VividVerse.</p>
+            <div id="social-roster-list" class="space-y-3">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-inventory" class="fixed inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm hidden pointer-events-auto">
+        <div class="glass-panel p-6 rounded-3xl max-w-md w-full border border-amber-500/30 shadow-2xl relative">
+            <button onclick="closeModal('modal-inventory')" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fas fa-xmark text-lg"></i></button>
+            <h2 class="text-xl font-extrabold text-white mb-1 flex items-center gap-2"><i class="fas fa-bag-shopping text-amber-400"></i> Backpack Inventory</h2>
+            <p class="text-xs text-slate-400 mb-4">Items, gifts, and mountain flora collected during your journey.</p>
+            
+            <div id="inventory-grid" class="grid grid-cols-3 gap-3">
+                <!-- Items populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-skills" class="fixed inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm hidden pointer-events-auto">
+        <div class="glass-panel p-6 rounded-3xl max-w-md w-full border border-emerald-500/30 shadow-2xl relative">
+            <button onclick="closeModal('modal-skills')" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fas fa-xmark text-lg"></i></button>
+            <h2 class="text-xl font-extrabold text-white mb-1 flex items-center gap-2"><i class="fas fa-star text-emerald-400"></i> Persona Skills</h2>
+            <p class="text-xs text-slate-400 mb-4">Master skills through work, hiking, and interactions.</p>
+            
+            <div class="space-y-3 text-xs">
+                <div>
+                    <div class="flex justify-between text-slate-200 mb-1"><span>🎨 Visual Arts</span><span id="sk-arts">Lv. 1</span></div>
+                    <div class="w-full bg-slate-800 rounded-full h-2"><div id="sk-bar-arts" class="bg-indigo-500 h-full rounded-full" style="width: 25%"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-slate-200 mb-1"><span>💻 Technology & Cloud</span><span id="sk-tech">Lv. 1</span></div>
+                    <div class="w-full bg-slate-800 rounded-full h-2"><div id="sk-bar-tech" class="bg-sky-500 h-full rounded-full" style="width: 20%"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-slate-200 mb-1"><span>🧗 Outdoor Exploration</span><span id="sk-outdoor">Lv. 1</span></div>
+                    <div class="w-full bg-slate-800 rounded-full h-2"><div id="sk-bar-outdoor" class="bg-emerald-500 h-full rounded-full" style="width: 30%"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-slate-200 mb-1"><span>💬 Social Charisma</span><span id="sk-social">Lv. 1</span></div>
+                    <div class="w-full bg-slate-800 rounded-full h-2"><div id="sk-bar-social" class="bg-pink-500 h-full rounded-full" style="width: 15%"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* GAME DATA STATE */
+        const gameState = {
+            player: {
+                name: "Jordan Cruz",
+                archetype: "Creative",
+                skinColor: "#e0ac69",
+                hairColor: "#2c1b18",
+                shirtColor: "#4f46e5",
+                pantsColor: "#1e293b",
+                money: 200,
+                day: 1,
+                time: 12.0, // 24-hr format float
+                needs: { energy: 100, hunger: 100, happiness: 100, social: 80 },
+                skills: { arts: 1, tech: 1, outdoor: 1, social: 1 },
+                inventory: [
+                    { id: 'coffee', name: 'Artisan Coffee', icon: '☕', type: 'food', boost: 'energy', qty: 2 },
+                    { id: 'camera', name: 'Trail Camera', icon: '📷', type: 'tool', qty: 1 }
+                ]
+            },
+            npcs: [
+                { id: 'alex', name: 'Alex Mercer', role: 'Digital Designer', x: 8, z: 12, relation: 35, status: 'Acquaintance', icon: '🎨', color: '#ec4899', dialogue: "Design is everywhere! Have you checked out the visual studio nearby?" },
+                { id: 'sam', name: 'Sam Vance', role: 'Tech Architect', x: -15, z: -10, relation: 20, status: 'Acquaintance', icon: '💻', color: '#0284c7', dialogue: "The cloud server infrastructure in this city is top notch!" },
+                { id: 'maya', name: 'Maya Lin', role: 'Mountain Guide', x: 25, z: -35, relation: 45, status: 'Friend', icon: '🧗', color: '#10b981', dialogue: "The view from the top peak at sunset is unforgettable!" }
+            ],
+            audioEnabled: true
+        };
+
+        let scene, camera, renderer, controls;
+        let playerGroup, playerAnimTime = 0;
+        let keys = {};
+        let activePrompt = null;
+        let activeNPCNearby = null;
+        let audioCtx = null;
+
+        /* Interactive World Hotspots */
+        const hotspots = [
+            { id: 'cafe', name: 'Pulse Artisan Café', x: 12, z: 6, radius: 4, action: 'Buy Gourmet Snack ($15)' },
+            { id: 'home', name: 'Cozy Living Apartment', x: -20, z: 18, radius: 4.5, action: 'Rest & Recharge Energy' },
+            { id: 'studio', name: 'Visual & Tech Studio', x: -10, z: -18, radius: 5, action: 'Open Work Terminal' },
+            { id: 'trail', name: 'Mountain Trail Summit', x: 30, z: -45, radius: 6, action: 'Hike & Collect Mountain Crystals' }
+        ];
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!gameState.audioEnabled || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            if (type === 'step') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, now);
+                gain.gain.setValueAtTime(0.02, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'interact') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'coin') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, now);
+                osc.frequency.setValueAtTime(880, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        }
+
+        function init3DWorld() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene & Fog
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.FogExp2(0x87ceeb, 0.008);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 12, 18);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2.05; // Prevent camera under floor
+            controls.minDistance = 6;
+            controls.maxDistance = 32;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfff5ea, 0.9);
+            sunLight.position.set(40, 60, 20);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 150;
+            const d = 50;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            scene.add(sunLight);
+            scene.sunLight = sunLight;
+
+            // Build Environment
+            buildTerrainAndCity();
+            buildPlayerMesh();
+            buildNPCs();
+
+            // Resize Event
+            window.addEventListener('resize', onWindowResize);
+
+            // Controls listeners
+            window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
+            window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+            
+            setupMobileButtons();
+        }
+
+        function buildTerrainAndCity() {
+            // Ground Grass
+            const groundGeo = new THREE.PlaneGeometry(160, 160);
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x3a7d44, roughness: 0.8 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // City Plaza Asphalt Roads
+            const roadMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+            const road1 = new THREE.Mesh(new THREE.PlaneGeometry(24, 100), roadMat);
+            road1.rotation.x = -Math.PI / 2;
+            road1.position.set(0, 0.02, 0);
+            road1.receiveShadow = true;
+            scene.add(road1);
+
+            const road2 = new THREE.Mesh(new THREE.PlaneGeometry(100, 24), roadMat);
+            road2.rotation.x = -Math.PI / 2;
+            road2.position.set(0, 0.02, 0);
+            road2.receiveShadow = true;
+            scene.add(road2);
+
+            // Buildings Construction Helper
+            function createBuilding(x, z, w, h, d, color, name) {
+                const bldgGroup = new THREE.Group();
+                const bGeo = new THREE.BoxGeometry(w, h, d);
+                const bMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4 });
+                const bldg = new THREE.Mesh(bGeo, bMat);
+                bldg.position.y = h / 2;
+                bldg.castShadow = true;
+                bldg.receiveShadow = true;
+                bldgGroup.add(bldg);
+
+                // Windows accent
+                const winGeo = new THREE.PlaneGeometry(w * 0.7, h * 0.6);
+                const winMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe, side: THREE.DoubleSide });
+                const win = new THREE.Mesh(winGeo, winMat);
+                win.position.set(0, h / 2, d / 2 + 0.05);
+                bldgGroup.add(win);
+
+                bldgGroup.position.set(x, 0, z);
+                scene.add(bldgGroup);
+            }
+
+            // City Buildings
+            createBuilding(-20, 18, 12, 10, 12, 0x64748b, "Apartments");
+            createBuilding(12, 6, 10, 8, 10, 0xd97706, "Café");
+            createBuilding(-10, -18, 14, 14, 14, 0x4f46e5, "Tech & Design Hub");
+
+            // Mountain Range & Hiking Trail
+            const mtnGroup = new THREE.Group();
+            const mtnGeo = new THREE.ConeGeometry(35, 30, 7);
+            const mtnMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9 });
+            const mountain = new THREE.Mesh(mtnGeo, mtnMat);
+            mountain.position.set(38, 15, -45);
+            mountain.castShadow = true;
+            mountain.receiveShadow = true;
+            mtnGroup.add(mountain);
+
+            // Snowcap peak
+            const snowGeo = new THREE.ConeGeometry(12, 10, 7);
+            const snowMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
+            const snow = new THREE.Mesh(snowGeo, snowMat);
+            snow.position.set(38, 25, -45);
+            mtnGroup.add(snow);
+
+            // Trail Path Visual
+            const pathGeo = new THREE.RingGeometry(10, 14, 16, 1, 0, Math.PI * 1.5);
+            const pathMat = new THREE.MeshBasicMaterial({ color: 0x92400e, side: THREE.DoubleSide });
+            const trail = new THREE.Mesh(pathGeo, pathMat);
+            trail.rotation.x = -Math.PI / 2;
+            trail.position.set(28, 0.05, -35);
+            mtnGroup.add(trail);
+
+            scene.add(mtnGroup);
+
+            // Trees and Vegetation Around
+            const treeGeo = new THREE.ConeGeometry(2, 6, 5);
+            const trunkGeo = new THREE.CylinderGeometry(0.4, 0.4, 2);
+            const leafMat = new THREE.MeshStandardMaterial({ color: 0x15803d });
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
+
+            for (let i = 0; i < 25; i++) {
+                const tx = (Math.random() - 0.5) * 120;
+                const tz = (Math.random() - 0.5) * 120;
+                if (Math.abs(tx) < 15 && Math.abs(tz) < 15) continue; // Keep center clear
+
+                const tree = new THREE.Group();
+                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+                trunk.position.y = 1;
+                const leaves = new THREE.Mesh(treeGeo, leafMat);
+                leaves.position.y = 4;
+                leaves.castShadow = true;
+
+                tree.add(trunk);
+                tree.add(leaves);
+                tree.position.set(tx, 0, tz);
+                scene.add(tree);
+            }
+        }
+
+        function buildPlayerMesh() {
+            playerGroup = new THREE.Group();
+
+            // Colors from state
+            const skinM = new THREE.MeshStandardMaterial({ color: gameState.player.skinColor, roughness: 0.6 });
+            const shirtM = new THREE.MeshStandardMaterial({ color: gameState.player.shirtColor, roughness: 0.5 });
+            const pantsM = new THREE.MeshStandardMaterial({ color: gameState.player.pantsColor, roughness: 0.5 });
+            const hairM = new THREE.MeshStandardMaterial({ color: gameState.player.hairColor, roughness: 0.8 });
+
+            // Torso
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.1, 0.5), shirtM);
+            torso.position.y = 1.35;
+            torso.castShadow = true;
+            playerGroup.add(torso);
+
+            // Head
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), skinM);
+            head.position.y = 2.2;
+            head.castShadow = true;
+            playerGroup.add(head);
+
+            // Hair
+            const hair = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.25, 0.65), hairM);
+            hair.position.y = 2.55;
+            playerGroup.add(hair);
+
+            // Legs (Animated Pivots)
+            const legGeo = new THREE.BoxGeometry(0.32, 0.9, 0.35);
+            
+            const leftLeg = new THREE.Mesh(legGeo, pantsM);
+            leftLeg.position.set(-0.22, 0.45, 0);
+            leftLeg.castShadow = true;
+            playerGroup.add(leftLeg);
+            playerGroup.leftLeg = leftLeg;
+
+            const rightLeg = new THREE.Mesh(legGeo, pantsM);
+            rightLeg.position.set(0.22, 0.45, 0);
+            rightLeg.castShadow = true;
+            playerGroup.add(rightLeg);
+            playerGroup.rightLeg = rightLeg;
+
+            playerGroup.position.set(0, 0, 0);
+            scene.add(playerGroup);
+        }
+
+        function buildNPCs() {
+            gameState.npcs.forEach(npc => {
+                const npcGroup = new THREE.Group();
+                const mat = new THREE.MeshStandardMaterial({ color: npc.color, roughness: 0.5 });
+                const skin = new THREE.MeshStandardMaterial({ color: 0xfbcfe8 });
+
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.1, 0.5), mat);
+                body.position.y = 1.35;
+                body.castShadow = true;
+                npcGroup.add(body);
+
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), skin);
+                head.position.y = 2.2;
+                npcGroup.add(head);
+
+                npcGroup.position.set(npc.x, 0, npc.z);
+                scene.add(npcGroup);
+                npc.mesh = npcGroup;
+            });
+        }
+
+        function setupMobileButtons() {
+            const bindBtn = (id, key) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; });
+                btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; });
+                btn.addEventListener('mousedown', () => { keys[key] = true; });
+                btn.addEventListener('mouseup', () => { keys[key] = false; });
+            };
+            bindBtn('btn-up', 'w');
+            bindBtn('btn-down', 's');
+            bindBtn('btn-left', 'a');
+            bindBtn('btn-right', 'd');
+        }
+
+        function finishCharacterCreation(e) {
+            e.preventDefault();
+            gameState.player.name = document.getElementById('input-name').value;
+            gameState.player.skinColor = document.getElementById('input-skin').value;
+            gameState.player.hairColor = document.getElementById('input-hair').value;
+            gameState.player.shirtColor = document.getElementById('input-shirt').value;
+            gameState.player.pantsColor = document.getElementById('input-pants').value;
+
+            // Update UI elements
+            document.getElementById('hud-name').innerText = gameState.player.name;
+            document.getElementById('character-creator').classList.add('hidden');
+            document.getElementById('ui-overlay').classList.remove('hidden');
+
+            initAudio();
+
+            // Rebuild player with selected colors
+            scene.remove(playerGroup);
+            buildPlayerMesh();
+        }
+
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            updatePlayerMovement(delta);
+            updateDayNightCycle(delta);
+            checkProximityPrompts();
+
+            controls.target.copy(playerGroup.position).add(new THREE.Vector3(0, 1.5, 0));
+            controls.update();
+
+            renderer.render(scene, camera);
+        }
+
+        /* Movement & Procedural Walking Animation */
+        function updatePlayerMovement(delta) {
+            const speed = 7.0;
+            let moveX = 0, moveZ = 0;
+
+            if (keys['w'] || keys['arrowup']) moveZ -= 1;
+            if (keys['s'] || keys['arrowdown']) moveZ += 1;
+            if (keys['a'] || keys['arrowleft']) moveX -= 1;
+            if (keys['d'] || keys['arrowright']) moveX += 1;
+
+            if (moveX !== 0 || moveZ !== 0) {
+                const moveVec = new THREE.Vector3(moveX, 0, moveZ).normalize();
+                
+                // Rotate vector relative to camera angle
+                const camEuler = new THREE.Euler(0, camera.rotation.y, 0, 'YXZ');
+                moveVec.applyEuler(camEuler);
+
+                playerGroup.position.x += moveVec.x * speed * delta;
+                playerGroup.position.z += moveVec.z * speed * delta;
+
+                // Face movement direction
+                const angle = Math.atan2(moveVec.x, moveVec.z);
+                playerGroup.rotation.y = angle;
+
+                // Animate leg swings
+                playerAnimTime += delta * 12;
+                playerGroup.leftLeg.rotation.x = Math.sin(playerAnimTime) * 0.6;
+                playerGroup.rightLeg.rotation.x = -Math.sin(playerAnimTime) * 0.6;
+
+                if (Math.sin(playerAnimTime * 2) > 0.95) playSound('step');
+
+                // Slowly consume energy while walking
+                gameState.player.needs.energy = Math.max(0, gameState.player.needs.energy - 0.01 * delta);
+            } else {
+                // Idle leg pose
+                playerGroup.leftLeg.rotation.x = 0;
+                playerGroup.rightLeg.rotation.x = 0;
+            }
+
+            // Keyboard E Action
+            if (keys['e']) {
+                keys['e'] = false; // Trigger once
+                triggerActivePrompt();
+            }
+
+            updateHUD();
+        }
+
+        function updateDayNightCycle(delta) {
+            gameState.player.time += (delta * 0.2); // ~2 mins per full day
+            if (gameState.player.time >= 24) {
+                gameState.player.time = 0;
+                gameState.player.day += 1;
+            }
+
+            const hrs = Math.floor(gameState.player.time);
+            const mins = Math.floor((gameState.player.time % 1) * 60);
+            const timeStr = `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+            document.getElementById('time-text').innerText = timeStr;
+            document.getElementById('time-day').innerText = `Day ${gameState.player.day}`;
+
+            // Light inclination based on time
+            const timeRad = (gameState.player.time / 24) * Math.PI * 2;
+            scene.sunLight.position.x = Math.cos(timeRad) * 60;
+            scene.sunLight.position.y = Math.sin(timeRad) * 60;
+
+            // Sky tint shift
+            if (hrs >= 6 && hrs < 18) {
+                scene.background.setHex(0x87ceeb);
+                scene.fog.color.setHex(0x87ceeb);
+                document.getElementById('time-icon').innerText = '☀️';
+            } else {
+                scene.background.setHex(0x0f172a);
+                scene.fog.color.setHex(0x0f172a);
+                document.getElementById('time-icon').innerText = '🌙';
+            }
+        }
+
+        function checkProximityPrompts() {
+            const pos = playerGroup.position;
+            const promptEl = document.getElementById('action-prompt');
+            const promptText = document.getElementById('prompt-text');
+            activePrompt = null;
+            activeNPCNearby = null;
+
+            // Check Hotspots
+            for (let hs of hotspots) {
+                const dist = pos.distanceTo(new THREE.Vector3(hs.x, pos.y, hs.z));
+                if (dist < hs.radius) {
+                    activePrompt = hs;
+                    promptText.innerText = `${hs.name}: ${hs.action}`;
+                    promptEl.classList.remove('opacity-0', 'translate-y-4');
+                    return;
+                }
+            }
+
+            // Check NPCs
+            for (let npc of gameState.npcs) {
+                const dist = pos.distanceTo(new THREE.Vector3(npc.x, pos.y, npc.z));
+                if (dist < 3.5) {
+                    activeNPCNearby = npc;
+                    promptText.innerText = `Talk with ${npc.name} (${npc.role})`;
+                    promptEl.classList.remove('opacity-0', 'translate-y-4');
+                    return;
+                }
+            }
+
+            // Hide prompt if out of range
+            promptEl.classList.add('opacity-0', 'translate-y-4');
+        }
+
+        function triggerActivePrompt() {
+            playSound('interact');
+            if (activeNPCNearby) {
+                openNPCModal(activeNPCNearby);
+            } else if (activePrompt) {
+                if (activePrompt.id === 'cafe') {
+                    if (gameState.player.money >= 15) {
+                        gameState.player.money -= 15;
+                        gameState.player.needs.hunger = Math.min(100, gameState.player.needs.hunger + 35);
+                        gameState.player.needs.happiness = Math.min(100, gameState.player.needs.happiness + 10);
+                        alert("Ate delicious artisan pastries at the Café! Hunger restored.");
+                    } else alert("Not enough cash!");
+                } else if (activePrompt.id === 'home') {
+                    gameState.player.needs.energy = 100;
+                    gameState.player.time = (gameState.player.time + 6) % 24;
+                    alert("Rested thoroughly at home. Energy fully restored!");
+                } else if (activePrompt.id === 'studio') {
+                    openModal('modal-career');
+                } else if (activePrompt.id === 'trail') {
+                    gameState.player.skills.outdoor += 0.5;
+                    gameState.player.needs.happiness = Math.min(100, gameState.player.needs.happiness + 25);
+                    alert("Hiked to the peak! Spectacular scenery increased your Happiness & Outdoor Skill!");
+                }
+            }
+        }
+
+        function openNPCModal(npc) {
+            document.getElementById('npc-modal-name').innerText = npc.name;
+            document.getElementById('npc-modal-role').innerText = npc.role;
+            document.getElementById('npc-dialogue-box').innerText = `"${npc.dialogue}"`;
+            document.getElementById('npc-relation-badge').innerText = npc.status;
+            document.getElementById('npc-relation-val').innerText = `Affection: ${npc.relation}%`;
+            openModal('modal-npc');
+        }
+
+        function interactNPC(type) {
+            if (!activeNPCNearby) return;
+            playSound('interact');
+
+            if (type === 'chat') {
+                activeNPCNearby.relation = Math.min(100, activeNPCNearby.relation + 8);
+                document.getElementById('npc-dialogue-box').innerText = `"I really enjoy sharing ideas with you, ${gameState.player.name}!"`;
+            } else if (type === 'joke') {
+                activeNPCNearby.relation = Math.min(100, activeNPCNearby.relation + 12);
+                document.getElementById('npc-dialogue-box').innerText = `"Haha! That was hilarious!"`;
+            } else if (type === 'hike') {
+                activeNPCNearby.relation = Math.min(100, activeNPCNearby.relation + 15);
+                document.getElementById('npc-dialogue-box').innerText = `"I'd love to go hiking up the peak with you!"`;
+            } else if (type === 'flirt') {
+                if (activeNPCNearby.relation >= 50) {
+                    activeNPCNearby.status = 'Partner / Soulmate';
+                    document.getElementById('npc-dialogue-box').innerText = `"My heart skips a beat when you're around! 💖"`;
+                } else {
+                    document.getElementById('npc-dialogue-box').innerText = `"Let's get to know each other a bit better first!"`;
+                }
+            }
+            
+            document.getElementById('npc-relation-badge').innerText = activeNPCNearby.status;
+            document.getElementById('npc-relation-val').innerText = `Affection: ${activeNPCNearby.relation}%`;
+            gameState.player.needs.social = Math.min(100, gameState.player.needs.social + 20);
+            updateHUD();
+        }
+
+        function startJobMinigame(jobType) {
+            closeModal('modal-career');
+            const mgArea = document.getElementById('minigame-area');
+            const title = document.getElementById('minigame-title');
+            mgArea.innerHTML = '';
+
+            if (jobType === 'design') {
+                title.innerText = 'Color Matching Studio';
+                let targetIndex = Math.floor(Math.random() * 3);
+                let colors = ['#f43f5e', '#6366f1', '#10b981'];
+
+                colors.forEach((c, idx) => {
+                    let btn = document.createElement('button');
+                    btn.className = 'w-20 h-20 rounded-2xl shadow-lg border-2 border-white/20 transition transform active:scale-95';
+                    btn.style.backgroundColor = c;
+                    btn.onclick = () => {
+                        if (idx === targetIndex) {
+                            gameState.player.money += 60;
+                            gameState.player.skills.arts += 0.4;
+                            playSound('coin');
+                            alert("Design completed flawlessly! Earned $60.");
+                        } else {
+                            alert("Color palette mismatched. Partial payout of $20.");
+                            gameState.player.money += 20;
+                        }
+                        closeModal('modal-minigame');
+                    };
+                    mgArea.appendChild(btn);
+                });
+            } else {
+                title.innerText = 'Server Node Re-routing';
+                let btn = document.createElement('button');
+                btn.className = 'px-6 py-4 bg-indigo-600 hover:bg-indigo-500 rounded-2xl text-white font-extrabold shadow-xl';
+                btn.innerText = '⚡ CONNECT BACKBONE NODE';
+                btn.onclick = () => {
+                    gameState.player.money += 85;
+                    gameState.player.skills.tech += 0.5;
+                    playSound('coin');
+                    alert("Server restored! Earned $85.");
+                    closeModal('modal-minigame');
+                };
+                mgArea.appendChild(btn);
+            }
+
+            openModal('modal-minigame');
+        }
+
+        function updateHUD() {
+            document.getElementById('hud-money').innerText = `$${Math.floor(gameState.player.money)}`;
+            
+            // Update need bars
+            document.getElementById('bar-energy').style.width = `${gameState.player.needs.energy}%`;
+            document.getElementById('val-energy').innerText = `${Math.floor(gameState.player.needs.energy)}%`;
+
+            document.getElementById('bar-hunger').style.width = `${gameState.player.needs.hunger}%`;
+            document.getElementById('val-hunger').innerText = `${Math.floor(gameState.player.needs.hunger)}%`;
+
+            document.getElementById('bar-happiness').style.width = `${gameState.player.needs.happiness}%`;
+            document.getElementById('val-happiness').innerText = `${Math.floor(gameState.player.needs.happiness)}%`;
+
+            document.getElementById('bar-social').style.width = `${gameState.player.needs.social}%`;
+            document.getElementById('val-social').innerText = `${Math.floor(gameState.player.needs.social)}%`;
+
+            // Skills progress
+            document.getElementById('sk-arts').innerText = `Lv. ${Math.floor(gameState.player.skills.arts)}`;
+            document.getElementById('sk-tech').innerText = `Lv. ${Math.floor(gameState.player.skills.tech)}`;
+            document.getElementById('sk-outdoor').innerText = `Lv. ${Math.floor(gameState.player.skills.outdoor)}`;
+            document.getElementById('sk-social').innerText = `Lv. ${Math.floor(gameState.player.skills.social)}`;
+        }
+
+        /* Modal Toggle Handlers */
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.onload = () => {
+            init3DWorld();
+            animate();
+        };
+    </script>
+</body>
+</html>
